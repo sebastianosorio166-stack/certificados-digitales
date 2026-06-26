@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Administrador de Perfiles</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body onload="cargarAdmin()">
+
+<!-- NAVBAR -->
+
+<nav class="navbar navbar-dark bg-primary">
+
+<div class="container-fluid">
+
+<span class="navbar-brand">
+Panel Administrador
+</span>
+
+<a href="dashboard.html" class="btn btn-light btn-sm">
+Volver
+</a>
+
+</div>
+
+</nav>
+
+<!-- CONTENIDO -->
+
+<div class="container mt-4">
+
+<h2 class="mb-4">
+Administración de Certificados y Roles
+</h2>
+
+<!-- SOLICITUDES PENDIENTES -->
+
+<div class="card shadow p-4 mb-5">
+
+<h4 class="mb-3 text-primary">
+Solicitudes Pendientes
+</h4>
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-striped">
+
+<thead class="table-primary">
+
+<tr>
+
+<th>Nombres</th>
+<th>Apellidos</th>
+<th>Cédula</th>
+<th>Asignar Rol</th>
+<th>Vigencia</th>
+<th>Acciones</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tablaPendientes">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<!-- APROBADOS -->
+
+<div class="card shadow p-4 mb-5">
+
+<h4 class="mb-3 text-success">
+Certificados Aprobados
+</h4>
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-striped">
+
+<thead class="table-success">
+
+<tr>
+
+<th>Nombres</th>
+<th>Apellidos</th>
+<th>Cédula</th>
+<th>Rol Asignado</th>
+<th>Vigencia</th>
+<th>Fecha Caducidad</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tablaAprobados">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<!-- HISTÓRICO VALIDACIONES -->
+
+<div class="card shadow p-4">
+
+<h4 class="mb-3 text-dark">
+Histórico de Validaciones
+</h4>
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-striped">
+
+<thead class="table-dark">
+
+<tr>
+
+<th>Usuario</th>
+<th>Acción</th>
+<th>Fecha</th>
+<th>Observación</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tablaHistorico">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="script.js"></script>
+
+<script>
+
+// ===============================
+// CARGAR HISTÓRICO VALIDACIONES
+// ===============================
+
+function cargarHistorico() {
+
+let usuarios =
+JSON.parse(localStorage.getItem("usuarios")) || [];
+
+let tabla =
+document.getElementById("tablaHistorico");
+
+tabla.innerHTML = "";
+
+usuarios.forEach(usuario => {
+
+usuario.historialValidaciones.forEach(historial => {
+
+tabla.innerHTML += `
+
+<tr>
+
+<td>
+${usuario.nombres} ${usuario.apellidos}
+</td>
+
+<td>
+${historial.accion}
+</td>
+
+<td>
+${historial.fecha}
+</td>
+
+<td>
+${historial.observacion}
+</td>
+
+</tr>
+
+`;
+
+});
+
+});
+
+}
+
+cargarHistorico();
+
+</script>
+
+</body>
+</html>

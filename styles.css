@@ -1,0 +1,64 @@
+body{
+font-family: Arial;
+margin:0;
+background:#f4f4f4;
+}
+
+/* CONTENEDOR LOGIN */
+
+.login-container{
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+/* CAJA LOGIN */
+
+.login-box{
+background:white;
+padding:40px;
+border-radius:8px;
+box-shadow:0 0 10px rgba(0,0,0,0.15);
+width:320px;
+text-align:center;
+}
+
+.login-box h2{
+margin-bottom:20px;
+}
+
+/* INPUTS */
+
+.login-box input{
+width:100%;
+padding:10px;
+margin:8px 0;
+border:1px solid #ccc;
+border-radius:5px;
+}
+
+/* BOTON */
+
+.login-box button{
+width:100%;
+padding:10px;
+background:#3498db;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
+}
+
+.login-box button:hover{
+background:#2980b9;
+}
+
+#mensaje{
+color:red;
+margin-top:10px;
+}
+
+.registro-link{
+margin-top:15px;
+}

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Perfil Usuario</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+
+</head>
+
+<body onload="cargarPerfilCompleto()">
+
+<!-- NAVBAR -->
+
+<nav class="navbar navbar-dark bg-primary">
+
+<div class="container-fluid">
+
+<span class="navbar-brand">
+Sistema de Certificados Digitales
+</span>
+
+<a href="index.html" class="btn btn-light btn-sm">
+Cerrar sesión
+</a>
+
+</div>
+
+</nav>
+
+<!-- CONTENIDO -->
+
+<div class="container mt-4">
+
+<h2 class="mb-4">
+Perfil del Usuario
+</h2>
+
+<div class="row">
+
+<!-- DATOS -->
+
+<div class="col-md-4">
+
+<div class="card shadow p-4 mb-4">
+
+<h4 class="mb-3">
+Información Personal
+</h4>
+
+<p><strong>Nombre:</strong>
+<span id="nombreUsuario"></span></p>
+
+<p><strong>Cédula:</strong>
+<span id="cedulaUsuario"></span></p>
+
+<p><strong>Estado:</strong>
+<span id="estadoCertificado"></span></p>
+
+<p><strong>Fecha Emisión:</strong>
+<span id="fechaEmision"></span></p>
+
+<p><strong>Fecha Caducidad:</strong>
+<span id="fechaCaducidad"></span></p>
+
+<p><strong>Vigencia:</strong>
+<span id="vigencia"></span></p>
+
+</div>
+
+<!-- OBSERVACIÓN -->
+
+<div class="card shadow p-4">
+
+<h4 class="mb-3 text-danger">
+Observación Administrativa
+</h4>
+
+<p id="observacionAdmin">
+Sin observaciones.
+</p>
+
+</div>
+
+</div>
+
+<!-- SOLICITUD -->
+
+<div class="col-md-8">
+
+<div class="card shadow p-4 mb-4">
+
+<h4 class="mb-4">
+Solicitud / Renovación Certificado
+</h4>
+
+<div class="row">
+
+<div class="col-md-6 mb-3">
+
+<label>Nombres</label>
+
+<input
+id="editarNombres"
+class="form-control">
+
+</div>
+
+<div class="col-md-6 mb-3">
+
+<label>Apellidos</label>
+
+<input
+id="editarApellidos"
+class="form-control">
+
+</div>
+
+<div class="col-md-6 mb-3">
+
+<label>Celular</label>
+
+<input
+id="editarCelular"
+class="form-control">
+
+</div>
+
+<div class="col-md-6 mb-3">
+
+<label>Correo</label>
+
+<input
+id="editarCorreo"
+class="form-control">
+
+</div>
+
+</div>
+
+<button
+onclick="solicitarNuevoCertificado()"
+class="btn btn-primary">
+
+Enviar Solicitud
+
+</button>
+
+</div>
+
+<!-- HISTÓRICO -->
+
+<div class="card shadow p-4">
+
+<h4 class="mb-3">
+Histórico de Solicitudes
+</h4>
+
+<div class="table-responsive">
+
+<table class="table table-bordered table-striped">
+
+<thead class="table-primary">
+
+<tr>
+
+<th>Estado</th>
+<th>Fecha Emisión</th>
+<th>Fecha Caducidad</th>
+<th>Observación</th>
+
+</tr>
+
+</thead>
+
+<tbody id="tablaHistoricoCompleto">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<script src="script.js"></script>
+
+<script>
+
+function cargarPerfilCompleto() {
+
+let cedula =
+localStorage.getItem("usuarioActivo");
+
+let usuarios =
+JSON.parse(localStorage.getItem("usuarios")) || [];
+
+let usuario =
+usuarios.find(u => u.cedula === cedula);
+
+if (!usuario) return;
+
+// DATOS
+
+document.getElementById("nombreUsuario").innerText =
+usuario.nombres + " " + usuario.apellidos;
+
+document.getElementById("cedulaUsuario").innerText =
+usuario.cedula;
+
+document.getElementById("estadoCertificado").innerText =
+usuario.estadoCertificado;
+
+document.getElementById("fechaEmision").innerText =
+usuario.fechaEmision;
+
+document.getElementById("fechaCaducidad").innerText =
+usuario.fechaCaducidad;
+
+document.getElementById("vigencia").innerText =
+usuario.vigencia;
+
+// EDITABLES
+
+document.getElementById("editarNombres").value =
+usuario.nombres;
+
+document.getElementById("editarApellidos").value =
+usuario.apellidos;
+
+document.getElementById("editarCelular").value =
+usuario.celular;
+
+document.getElementById("editarCorreo").value =
+usuario.correo;
+
+// OBSERVACIÓN
+
+let ultima =
+usuario.historialValidaciones[
+usuario.historialValidaciones.length - 1
+];
+
+if (ultima) {
+
+document.getElementById("observacionAdmin").innerText =
+ultima.observacion;
+
+}
+
+// HISTÓRICO
+
+let tabla =
+document.getElementById("tablaHistoricoCompleto");
+
+tabla.innerHTML = "";
+
+usuario.historialValidaciones.forEach(item => {
+
+tabla.innerHTML += `
+
+<tr>
+
+<td>${item.accion}</td>
+
+<td>
+${usuario.fechaEmision}
+</td>
+
+<td>
+${usuario.fechaCaducidad}
+</td>
+
+<td>
+${item.observacion}
+</td>
+
+</tr>
+
+`;
+
+});
+
+}
+
+// NUEVA SOLICITUD
+
+function solicitarNuevoCertificado() {
+
+let cedula =
+localStorage.getItem("usuarioActivo");
+
+let usuarios =
+JSON.parse(localStorage.getItem("usuarios")) || [];
+
+let index =
+usuarios.findIndex(u => u.cedula === cedula);
+
+// ACTUALIZAR DATOS
+
+usuarios[index].nombres =
+document.getElementById("editarNombres").value;
+
+usuarios[index].apellidos =
+document.getElementById("editarApellidos").value;
+
+usuarios[index].celular =
+document.getElementById("editarCelular").value;
+
+usuarios[index].correo =
+document.getElementById("editarCorreo").value;
+
+// NUEVA SOLICITUD
+
+usuarios[index].estadoCertificado =
+"Pendiente";
+
+usuarios[index].solicitudPendiente = true;
+
+localStorage.setItem(
+"usuarios",
+JSON.stringify(usuarios)
+);
+
+alert("Solicitud enviada correctamente");
+
+location.reload();
+
+}
+
+</script>
+
+</body>
+</html>
