@@ -2,6 +2,14 @@
 
 require_once __DIR__ . '/../models/Usuario.php';
 
+/**
+ * -------------------------------------------------------
+ * Controlador de Autenticación
+ * Proyecto: Sistema de Gestión de Certificados Digitales
+ * SENA - GA7
+ * -------------------------------------------------------
+ */
+
 class AuthController
 {
     private $usuario;
@@ -13,35 +21,62 @@ class AuthController
 
     /**
      * Iniciar sesión
+     *
+     * @param array $datos
+     * @return array
      */
-    public function login($correo, $password)
+    public function login($datos)
     {
-        $usuario = $this->usuario->obtenerPorCorreo($correo);
+
+        if (
+            empty($datos["documento"]) ||
+            empty($datos["password"])
+        ) {
+
+            return [
+
+                "status" => false,
+
+                "mensaje" => "Debe ingresar el documento y la contraseña.",
+
+                "data" => null
+
+            ];
+
+        }
+
+        $usuario = $this->usuario->login(
+
+            $datos["documento"],
+
+            $datos["password"]
+
+        );
 
         if (!$usuario) {
 
             return [
+
                 "status" => false,
-                "mensaje" => "El usuario no existe."
+
+                "mensaje" => "Documento o contraseña incorrectos.",
+
+                "data" => null
+
             ];
 
         }
-
-        if (!password_verify($password, $usuario["password"])) {
-
-            return [
-                "status" => false,
-                "mensaje" => "Contraseña incorrecta."
-            ];
-
-        }
-
-        unset($usuario["password"]);
 
         return [
+
             "status" => true,
+
             "mensaje" => "Inicio de sesión exitoso.",
-            "usuario" => $usuario
+
+            "data" => $usuario
+
         ];
+
     }
+
 }

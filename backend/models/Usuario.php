@@ -2,6 +2,12 @@
 
 require_once __DIR__ . '/../config/Database.php';
 
+/**
+ * Modelo Usuario
+ * Proyecto: Sistema de Gestión de Certificados Digitales
+ * SENA - GA7
+ */
+
 class Usuario
 {
     private $conexion;
@@ -18,7 +24,17 @@ class Usuario
      */
     public function obtenerTodos()
     {
-        $sql = "SELECT * FROM {$this->tabla}";
+        $sql = "SELECT
+                    id,
+                    nombres,
+                    apellidos,
+                    documento,
+                    correo,
+                    telefono,
+                    estado,
+                    rol_id,
+                    fecha_registro
+                FROM {$this->tabla}";
 
         $stmt = $this->conexion->prepare($sql);
         $stmt->execute();
@@ -31,10 +47,42 @@ class Usuario
      */
     public function obtenerPorId($id)
     {
-        $sql = "SELECT * FROM {$this->tabla} WHERE id = :id";
+        $sql = "SELECT
+                    id,
+                    nombres,
+                    apellidos,
+                    documento,
+                    correo,
+                    telefono,
+                    estado,
+                    rol_id,
+                    fecha_registro
+                FROM {$this->tabla}
+                WHERE id = :id";
 
         $stmt = $this->conexion->prepare($sql);
+
         $stmt->bindParam(":id", $id);
+
+        $stmt->execute();
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Buscar usuario por documento
+     */
+    public function obtenerPorDocumento($documento)
+    {
+        $sql = "SELECT *
+                FROM {$this->tabla}
+                WHERE documento = :documento
+                LIMIT 1";
+
+        $stmt = $this->conexion->prepare($sql);
+
+        $stmt->bindParam(":documento", $documento);
+
         $stmt->execute();
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -46,6 +94,7 @@ class Usuario
     public function crear($datos)
     {
         $sql = "INSERT INTO {$this->tabla}
+
         (
             nombres,
             apellidos,
@@ -55,7 +104,9 @@ class Usuario
             telefono,
             rol_id
         )
+
         VALUES
+
         (
             :nombres,
             :apellidos,
@@ -69,13 +120,24 @@ class Usuario
         $stmt = $this->conexion->prepare($sql);
 
         return $stmt->execute([
+
             ":nombres" => $datos["nombres"],
+
             ":apellidos" => $datos["apellidos"],
+
             ":documento" => $datos["documento"],
+
             ":correo" => $datos["correo"],
-            ":password" => password_hash($datos["password"], PASSWORD_DEFAULT),
+
+            ":password" => password_hash(
+                $datos["password"],
+                PASSWORD_DEFAULT
+            ),
+
             ":telefono" => $datos["telefono"],
+
             ":rol_id" => $datos["rol_id"]
+
         ]);
     }
 
@@ -85,25 +147,41 @@ class Usuario
     public function actualizar($id, $datos)
     {
         $sql = "UPDATE {$this->tabla}
+
                 SET
-                    nombres = :nombres,
-                    apellidos = :apellidos,
-                    documento = :documento,
-                    correo = :correo,
-                    telefono = :telefono,
-                    rol_id = :rol_id
+
+                nombres = :nombres,
+
+                apellidos = :apellidos,
+
+                documento = :documento,
+
+                correo = :correo,
+
+                telefono = :telefono,
+
+                rol_id = :rol_id
+
                 WHERE id = :id";
 
         $stmt = $this->conexion->prepare($sql);
 
         return $stmt->execute([
+
             ":nombres" => $datos["nombres"],
+
             ":apellidos" => $datos["apellidos"],
+
             ":documento" => $datos["documento"],
+
             ":correo" => $datos["correo"],
+
             ":telefono" => $datos["telefono"],
+
             ":rol_id" => $datos["rol_id"],
+
             ":id" => $id
+
         ]);
     }
 
@@ -112,12 +190,39 @@ class Usuario
      */
     public function eliminar($id)
     {
-        $sql = "DELETE FROM {$this->tabla} WHERE id = :id";
+        $sql = "DELETE FROM {$this->tabla}
+                WHERE id = :id";
 
         $stmt = $this->conexion->prepare($sql);
 
         return $stmt->execute([
+
             ":id" => $id
+
         ]);
+    }
+
+    /**
+     * Validar credenciales
+     */
+    public function login($documento, $password)
+    {
+        $usuario = $this->obtenerPorDocumento($documento);
+
+        if (!$usuario) {
+
+            return false;
+
+        }
+
+        if (!password_verify($password, $usuario["password"])) {
+
+            return false;
+
+        }
+
+        unset($usuario["password"]);
+
+        return $usuario;
     }
 }
