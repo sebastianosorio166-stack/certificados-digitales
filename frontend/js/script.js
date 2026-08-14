@@ -1,407 +1,146 @@
-// ===============================
-// LOGIN DEL SISTEMA
-// ===============================
+const API = '../backend/api';
 
-function login() {
-
-let usuario = document.getElementById("usuario").value.trim();
-let password = document.getElementById("password").value.trim();
-
-// ADMIN PRINCIPAL
-
-if (usuario === "Admin" && password === "1") {
-
-localStorage.setItem("usuarioActivo", "Admin");
-localStorage.setItem("rolActivo", "admin");
-
-window.location.href = "dashboard.html";
-return;
-
+async function api(path, options = {}) {
+  const response = await fetch(`${API}/${path}`, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+  const payload = await response.json().catch(() => ({ mensaje: 'Respuesta inválida del servidor.' }));
+  if (!response.ok || !payload.status) throw new Error(payload.mensaje);
+  return payload.data;
 }
 
-// VALIDAR USUARIOS REGISTRADOS
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-let encontrado = usuarios.find(u =>
-u.cedula === usuario && u.password === password
-);
-
-if (encontrado) {
-
-localStorage.setItem("usuarioActivo", encontrado.cedula);
-localStorage.setItem("rolActivo", encontrado.rol);
-
-window.location.href = "perfil.html";
-
-} else {
-
-document.getElementById("mensaje").innerText =
-"Usuario o contraseña incorrectos";
-
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 }
 
+function showMessage(element, message, type = 'danger') {
+  element.textContent = message;
+  element.className = `alert alert-${type}`;
+  element.hidden = false;
 }
 
-// ===============================
-// REGISTRO USUARIO
-// ===============================
-
-function registro() {
-
-let nombres = document.getElementById("nombres").value;
-let apellidos = document.getElementById("apellidos").value;
-let cedula = document.getElementById("cedula").value;
-let celular = document.getElementById("celular").value;
-let correo = document.getElementById("correo").value;
-let password = document.getElementById("passwordRegistro").value;
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-// VALIDAR EXISTENCIA
-
-let existe = usuarios.find(u => u.cedula === cedula);
-
-if (existe) {
-
-document.getElementById("mensajeRegistro").innerText =
-"El usuario ya existe";
-
-return;
-
+function hideMessage(element) {
+  element.hidden = true;
 }
 
-// CREAR USUARIO
-
-let nuevoUsuario = {
-
-nombres,
-apellidos,
-cedula,
-celular,
-correo,
-password,
-
-rol: "usuario",
-
-estadoCertificado: "Sin solicitud",
-
-fechaEmision: "-",
-fechaCaducidad: "-",
-vigencia: "-",
-
-historialCertificados: [],
-
-historialValidaciones: [],
-
-solicitudPendiente: false
-
-};
-
-usuarios.push(nuevoUsuario);
-
-localStorage.setItem("usuarios", JSON.stringify(usuarios));
-
-document.getElementById("mensajeRegistro").innerText =
-"Usuario registrado correctamente";
-
+function formatDate(value) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('es-CO').format(new Date(`${value}T00:00:00`));
 }
 
-// ===============================
-// CARGAR PERFIL
-// ===============================
+async function getSession() {
+  return api('sesion.php');
+}
 
-function cargarPerfil() {
+async function logout() {
+  await api('logout.php', { method: 'POST', body: '{}' });
+  window.location.href = 'index.html';
+}
 
-let cedula = localStorage.getItem("usuarioActivo");
+async function initLogin() {
+  const form = document.querySelector('#loginForm');
+  const message = document.querySelector('#message');
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    hideMessage(message);
+    const data = Object.fromEntries(new FormData(form));
+    try {
+      const user = await api('sesion.php', { method: 'POST', body: JSON.stringify({ accion: 'login', ...data }) });
+      window.location.href = user.rol === 'Administrador' ? 'admin.html' : 'perfil.html';
+    } catch (error) {
+      showMessage(message, error.message);
+    }
+  });
+}
 
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
+async function initRegister() {
+  const form = document.querySelector('#registerForm');
+  const message = document.querySelector('#message');
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    hideMessage(message);
+    try {
+      await api('sesion.php', { method: 'POST', body: JSON.stringify({ accion: 'registro', ...Object.fromEntries(new FormData(form)) }) });
+      form.reset();
+      showMessage(message, 'Registro completado. Ya puedes iniciar sesión.', 'success');
+    } catch (error) {
+      showMessage(message, error.message);
+    }
+  });
+}
 
-let usuario = usuarios.find(u => u.cedula === cedula);
+async function initProfile() {
+  let user;
+  try {
+    user = await getSession();
+    if (!user) throw new Error();
+    if (user.rol === 'Administrador') window.location.href = 'admin.html';
+  } catch {
+    window.location.href = 'index.html';
+    return;
+  }
 
-if (!usuario) return;
+  document.querySelector('#userName').textContent = `${user.nombres} ${user.apellidos}`;
+  document.querySelector('#documento').textContent = user.documento;
+  for (const field of ['nombres', 'apellidos', 'correo', 'telefono']) document.querySelector(`#${field}`).value = user[field] || '';
 
-// DATOS PERSONALES
+  const message = document.querySelector('#message');
+  const [solicitudes, certificados] = await Promise.all([api('solicitudes.php'), api('certificados.php')]);
+  document.querySelector('#solicitudes').innerHTML = solicitudes.map(item => `<tr><td>${formatDate(item.fecha_solicitud)}</td><td>${escapeHtml(item.estado)}</td><td>${escapeHtml(item.observaciones || '—')}</td></tr>`).join('') || '<tr><td colspan="3">Aún no tienes solicitudes.</td></tr>';
+  document.querySelector('#certificados').innerHTML = certificados.map(item => `<tr><td>${escapeHtml(item.codigo)}</td><td>${formatDate(item.fecha_emision)}</td><td>${formatDate(item.fecha_vencimiento)}</td><td>${escapeHtml(item.estado)}</td></tr>`).join('') || '<tr><td colspan="4">No tienes certificados.</td></tr>';
 
-document.getElementById("nombreUsuario").innerText =
-usuario.nombres + " " + usuario.apellidos;
+  document.querySelector('#profileForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+      await api('usuarios.php', { method: 'PUT', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
+      showMessage(message, 'Perfil actualizado.', 'success');
+    } catch (error) { showMessage(message, error.message); }
+  });
+  document.querySelector('#requestForm').addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+      await api('solicitudes.php', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.currentTarget))) });
+      window.location.reload();
+    } catch (error) { showMessage(message, error.message); }
+  });
+}
 
-document.getElementById("cedulaUsuario").innerText =
-usuario.cedula;
+async function initAdmin() {
+  let user;
+  try {
+    user = await getSession();
+    if (!user || user.rol !== 'Administrador') throw new Error();
+  } catch {
+    window.location.href = 'index.html';
+    return;
+  }
 
-document.getElementById("estadoCertificado").innerText =
-usuario.estadoCertificado;
+  const requests = await api('solicitudes.php');
+  const pending = requests.filter(item => item.estado === 'Pendiente');
+  document.querySelector('#pendingRequests').innerHTML = pending.map(item => `<tr><td>${escapeHtml(`${item.nombres} ${item.apellidos}`)}</td><td>${escapeHtml(item.documento)}</td><td>${formatDate(item.fecha_solicitud)}</td><td>${escapeHtml(item.observaciones || '—')}</td><td><button class="btn btn-success btn-sm" data-action="aprobar" data-id="${item.id}">Aprobar</button> <button class="btn btn-outline-danger btn-sm" data-action="rechazar" data-id="${item.id}">Rechazar</button></td></tr>`).join('') || '<tr><td colspan="5">No hay solicitudes pendientes.</td></tr>';
+  document.querySelector('#requestHistory').innerHTML = requests.map(item => `<tr><td>${escapeHtml(`${item.nombres} ${item.apellidos}`)}</td><td>${escapeHtml(item.estado)}</td><td>${formatDate(item.fecha_solicitud)}</td><td>${escapeHtml(item.observaciones || '—')}</td></tr>`).join('') || '<tr><td colspan="4">No hay solicitudes.</td></tr>';
 
-document.getElementById("fechaEmision").innerText =
-usuario.fechaEmision;
+  document.querySelector('#pendingRequests').addEventListener('click', async event => {
+    const button = event.target.closest('button[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+    const observaciones = action === 'rechazar' ? window.prompt('Indica el motivo del rechazo:') : 'Solicitud aprobada.';
+    if (observaciones === null || observaciones.trim() === '') return;
+    const vigencia = action === 'aprobar' ? window.prompt('Vigencia en años (1, 2 o 3):', '1') : undefined;
+    try {
+      await api('solicitudes.php', { method: 'PATCH', body: JSON.stringify({ id: Number(button.dataset.id), accion: action, observaciones, vigencia: Number(vigencia) }) });
+      window.location.reload();
+    } catch (error) { window.alert(error.message); }
+  });
+}
 
-document.getElementById("fechaCaducidad").innerText =
-usuario.fechaCaducidad;
-
-document.getElementById("vigencia").innerText =
-usuario.vigencia;
-
-// HISTORIAL
-
-let tabla = document.getElementById("historialCertificados");
-
-tabla.innerHTML = "";
-
-usuario.historialCertificados.forEach(cert => {
-
-tabla.innerHTML += `
-
-<tr>
-<td>${cert.nombre}</td>
-<td>${cert.cedula}</td>
-<td>${cert.fechaEmision}</td>
-<td>${cert.fechaCaducidad}</td>
-</tr>
-
-`;
-
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-logout]').forEach(button => button.addEventListener('click', logout));
+  const page = document.body.dataset.page;
+  if (page === 'login') initLogin();
+  if (page === 'register') initRegister();
+  if (page === 'profile') initProfile();
+  if (page === 'admin') initAdmin();
 });
-
-}
-
-// ===============================
-// SOLICITAR CERTIFICADO
-// ===============================
-
-function solicitarCertificado() {
-
-let cedula = localStorage.getItem("usuarioActivo");
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-let index = usuarios.findIndex(u => u.cedula === cedula);
-
-if (index === -1) return;
-
-usuarios[index].estadoCertificado = "Pendiente";
-usuarios[index].solicitudPendiente = true;
-
-localStorage.setItem("usuarios", JSON.stringify(usuarios));
-
-alert("Solicitud enviada correctamente");
-
-location.reload();
-
-}
-
-// ===============================
-// PANEL ADMINISTRADOR
-// ===============================
-
-function cargarAdmin() {
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-let pendientes = document.getElementById("tablaPendientes");
-
-let aprobados = document.getElementById("tablaAprobados");
-
-pendientes.innerHTML = "";
-aprobados.innerHTML = "";
-
-// RECORRER USUARIOS
-
-usuarios.forEach((u, index) => {
-
-// PENDIENTES
-
-if (u.estadoCertificado === "Pendiente") {
-
-pendientes.innerHTML += `
-
-<tr>
-
-<td>${u.nombres}</td>
-<td>${u.apellidos}</td>
-<td>${u.cedula}</td>
-
-<td>
-
-<select id="rol${index}">
-<option value="usuario">Usuario</option>
-<option value="admin">Administrador</option>
-</select>
-
-</td>
-
-<td>
-
-<select id="vigencia${index}">
-<option value="1 año">1 año</option>
-<option value="2 años">2 años</option>
-<option value="3 años">3 años</option>
-</select>
-
-</td>
-
-<td>
-
-<button onclick="aprobarUsuario(${index})" class="btn btn-success btn-sm">
-Aprobar
-</button>
-
-<button onclick="rechazarUsuario(${index})" class="btn btn-danger btn-sm">
-Rechazar
-</button>
-
-</td>
-
-</tr>
-
-`;
-
-}
-
-// APROBADOS
-
-if (u.estadoCertificado === "Aprobado") {
-
-aprobados.innerHTML += `
-
-<tr>
-
-<td>${u.nombres}</td>
-<td>${u.apellidos}</td>
-<td>${u.cedula}</td>
-<td>${u.rol}</td>
-<td>${u.vigencia}</td>
-<td>${u.fechaCaducidad}</td>
-
-</tr>
-
-`;
-
-}
-
-});
-
-}
-
-// ===============================
-// APROBAR USUARIO
-// ===============================
-
-function aprobarUsuario(index) {
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-let rol =
-document.getElementById(`rol${index}`).value;
-
-let vigencia =
-document.getElementById(`vigencia${index}`).value;
-
-// FECHA ACTUAL
-
-let fechaActual = new Date();
-
-let fechaEmision =
-fechaActual.toLocaleDateString();
-
-// FECHA CADUCIDAD
-
-let años = parseInt(vigencia);
-
-fechaActual.setFullYear(fechaActual.getFullYear() + años);
-
-let fechaCaducidad =
-fechaActual.toLocaleDateString();
-
-// ACTUALIZAR DATOS
-
-usuarios[index].rol = rol;
-
-usuarios[index].estadoCertificado = "Aprobado";
-
-usuarios[index].vigencia = vigencia;
-
-usuarios[index].fechaEmision = fechaEmision;
-
-usuarios[index].fechaCaducidad = fechaCaducidad;
-
-usuarios[index].solicitudPendiente = false;
-
-// HISTORIAL CERTIFICADOS
-
-usuarios[index].historialCertificados.push({
-
-nombre:
-usuarios[index].nombres + " " +
-usuarios[index].apellidos,
-
-cedula:
-usuarios[index].cedula,
-
-fechaEmision,
-fechaCaducidad
-
-});
-
-// HISTORIAL VALIDACIONES
-
-usuarios[index].historialValidaciones.push({
-
-admin: "Admin",
-
-accion: "Aprobado",
-
-fecha:
-new Date().toLocaleString(),
-
-observacion:
-"Certificado aprobado correctamente"
-
-});
-
-localStorage.setItem("usuarios", JSON.stringify(usuarios));
-
-alert("Solicitud aprobada");
-
-location.reload();
-
-}
-
-// ===============================
-// RECHAZAR USUARIO
-// ===============================
-
-function rechazarUsuario(index) {
-
-let motivo =
-prompt("Ingrese motivo del rechazo");
-
-if (!motivo) return;
-
-let usuarios = JSON.parse(localStorage.getItem("usuarios")) || [];
-
-usuarios[index].estadoCertificado = "Rechazado";
-
-usuarios[index].solicitudPendiente = false;
-
-// HISTORIAL VALIDACIONES
-
-usuarios[index].historialValidaciones.push({
-
-admin: "Admin",
-
-accion: "Rechazado",
-
-fecha:
-new Date().toLocaleString(),
-
-observacion: motivo
-
-});
-
-localStorage.setItem("usuarios", JSON.stringify(usuarios));
-
-alert("Solicitud rechazada");
-
-location.reload();
-
-}

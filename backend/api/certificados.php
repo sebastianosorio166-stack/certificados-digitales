@@ -1,90 +1,25 @@
 <?php
 
-header("Content-Type: application/json; charset=UTF-8");
+declare(strict_types=1);
 
-require_once __DIR__ . '/../controllers/CertificadoController.php';
+require_once __DIR__ . '/bootstrap.php';
 
-$controller = new CertificadoController();
+try {
+    requireMethod('GET');
+    $user = requireUser();
+    $sql = 'SELECT c.id, c.codigo, c.fecha_emision, c.fecha_vencimiento, c.estado,
+                   u.nombres, u.apellidos, u.documento
+            FROM certificados c INNER JOIN usuarios u ON u.id = c.usuario_id';
+    $params = [];
+    if ($user['rol'] !== 'Administrador') {
+        $sql .= ' WHERE c.usuario_id = :usuario_id';
+        $params[':usuario_id'] = $user['id'];
+    }
+    $sql .= ' ORDER BY c.fecha_emision DESC';
 
-$method = $_SERVER["REQUEST_METHOD"];
-
-switch ($method) {
-
-    case "GET":
-
-        if (isset($_GET["id"])) {
-
-            echo json_encode(
-                $controller->show($_GET["id"])
-            );
-
-        } else {
-
-            echo json_encode(
-                $controller->index()
-            );
-
-        }
-
-        break;
-
-    case "POST":
-
-        $datos = json_decode(file_get_contents("php://input"), true);
-
-        echo json_encode(
-            $controller->store($datos)
-        );
-
-        break;
-
-    case "PUT":
-
-        if (!isset($_GET["id"])) {
-
-            echo json_encode([
-                "status" => false,
-                "mensaje" => "Debe indicar el ID."
-            ]);
-
-            exit;
-
-        }
-
-        $datos = json_decode(file_get_contents("php://input"), true);
-
-        echo json_encode(
-            $controller->update($_GET["id"], $datos)
-        );
-
-        break;
-
-    case "DELETE":
-
-        if (!isset($_GET["id"])) {
-
-            echo json_encode([
-                "status" => false,
-                "mensaje" => "Debe indicar el ID."
-            ]);
-
-            exit;
-
-        }
-
-        echo json_encode(
-            $controller->destroy($_GET["id"])
-        );
-
-        break;
-
-    default:
-
-        http_response_code(405);
-
-        echo json_encode([
-            "status" => false,
-            "mensaje" => "Método HTTP no permitido."
-        ]);
-
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    respond(true, 'Certificados consultados.', $stmt->fetchAll());
+} catch (PDOException $exception) {
+    respond(false, 'No fue posible consultar los certificados.', null, 500);
 }

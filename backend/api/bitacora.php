@@ -1,47 +1,18 @@
 <?php
 
-header("Content-Type: application/json; charset=UTF-8");
+declare(strict_types=1);
 
-require_once __DIR__ . '/../controllers/BitacoraController.php';
+require_once __DIR__ . '/bootstrap.php';
 
-$controller = new BitacoraController();
-
-$method = $_SERVER["REQUEST_METHOD"];
-
-switch ($method) {
-
-    case "GET":
-
-        echo json_encode(
-
-            $controller->index()
-
-        );
-
-        break;
-
-    case "POST":
-
-        $datos = json_decode(file_get_contents("php://input"), true);
-
-        echo json_encode(
-
-            $controller->store($datos)
-
-        );
-
-        break;
-
-    default:
-
-        http_response_code(405);
-
-        echo json_encode([
-
-            "status" => false,
-
-            "mensaje" => "Método HTTP no permitido."
-
-        ]);
-
+try {
+    requireMethod('GET');
+    requireAdmin();
+    $entries = db()->query(
+        'SELECT b.id, b.accion, b.descripcion, b.fecha, u.nombres, u.apellidos, u.documento
+         FROM bitacora b LEFT JOIN usuarios u ON u.id = b.usuario_id
+         ORDER BY b.fecha DESC'
+    )->fetchAll();
+    respond(true, 'Bitácora consultada.', $entries);
+} catch (PDOException $exception) {
+    respond(false, 'No fue posible consultar la bitácora.', null, 500);
 }

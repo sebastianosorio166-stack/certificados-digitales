@@ -1,59 +1,13 @@
 <?php
 
-/**
- * -------------------------------------------------------
- * API Logout
- * Proyecto: Sistema de Gestión de Certificados Digitales
- * SENA - GA7
- * -------------------------------------------------------
- */
+declare(strict_types=1);
 
-header("Content-Type: application/json; charset=UTF-8");
-
-session_start();
-
-/**
- * Solo se permite POST
- */
-
-if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-
-    http_response_code(405);
-
-    echo json_encode([
-
-        "status" => false,
-
-        "mensaje" => "Método HTTP no permitido.",
-
-        "data" => null
-
-    ]);
-
-    exit;
-
+require_once __DIR__ . '/bootstrap.php';
+requireMethod('POST');
+$user = currentUser();
+if ($user !== null) {
+    logAction(db(), (int) $user['id'], 'Cierre de sesión', 'El usuario cerró sesión.');
 }
-
-/**
- * Destruir sesión
- */
-
-session_unset();
-
+$_SESSION = [];
 session_destroy();
-
-/**
- * Respuesta
- */
-
-echo json_encode([
-
-    "status" => true,
-
-    "mensaje" => "Sesión finalizada correctamente.",
-
-    "data" => null
-
-]);
-
-exit;
+respond(true, 'Sesión finalizada correctamente.');
