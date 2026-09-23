@@ -26,8 +26,23 @@ function hideMessage(element) {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('es-CO').format(new Date(`${value}T00:00:00`));
+  if (!value) return '-';
+
+  const texto = String(value).trim();
+  const fecha = texto.substring(0, 10);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+    console.error('Fecha invalida recibida:', value);
+    return '-';
+  }
+
+  const partes = fecha.split('-');
+
+  const anio = partes[0];
+  const mes = partes[1];
+  const dia = partes[2];
+
+  return `${dia}/${mes}/${anio}`;
 }
 
 async function getSession() {
